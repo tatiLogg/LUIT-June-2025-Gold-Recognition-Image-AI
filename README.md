@@ -53,6 +53,3 @@ Sample Output (JSON)
   "timestamp": "2025-06-01T14:55:32Z",
   "branch": "main"
 }
-
-
-# LUIT-June-2025-Gold-Recognition-Image-AI
