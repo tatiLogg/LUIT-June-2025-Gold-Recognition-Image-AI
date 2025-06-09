@@ -1,55 +1,49 @@
 LUIT-June-2025-Gold-Recognition-Image-AI
 
-Project Overview
+An automated image recognition pipeline using Amazon Rekognition, DynamoDB, S3, and GitHub Actions.
 
-Technologies Used
-
-How It Works
-1. Add an image to the 'images/' folder
-2. Push or PR triggers GitHub Actions
-3. Action:
-   - Uploads image to 'rekognition-input/' in S3
-   - Runs Rekognition on the image
-   - Saves labels to:
-     - 'beta_results' table on **PR**
-     - 'prod_results' table on **merge**
-
-CI/CD Workflows
-
-Pull Request: 'on_pull_request.yml'
-- Triggers when a PR targets 'main'
-- Writes results to 'beta_results' table
-
-Merge to Main: 'on_merge.yml'
-- Triggers on push to 'main'
-- Writes results to 'prod_results' table
-
-DynamoDB Schema
-
-Table Names:
-- 'beta_results'
-- 'prod_results'
-
-Partition Key:
-- 'filename' (string)
-
-GitHub Secrets (Required)
+> Automatically labels uploaded images and stores results in DynamoDB  
+> Fully CI/CD automated via pull requests and merges to 'main'
 
 
-Secret Name                   Description                      
-'AWS_ACCESS_KEY_ID'           AWS IAM access key               
-'AWS_SECRET_ACCESS_KEY'       AWS IAM secret                   
-'AWS_REGION'                  e.g. 'us-east-1' 
+Requirements
+
+- Python 3.8+
+- AWS account with Rekognition, S3, and DynamoDB enabled
+- AWS IAM user with permissions for Rekognition, S3, and DynamoDB
+- GitHub account + GitHub Actions enabled
 
 
-Sample Output (JSON)
+AWS Setup Instructions
+
+Create an S3 Bucket
+
+Accessed the [AWS S3 Console](https://s3.console.aws.amazon.com/s3/home) and created a bucket:
+
+- Name: 'my-rekognition-pixel' 
+- Region: 'us-east-1' recommended
+- No public access required
+- No versioning necessary
+
+Created a folder inside the bucket: 'rekognition-input/'
+
+Created DynamoDB Tables
+
+Went to [AWS DynamoDB Console](https://console.aws.amazon.com/dynamodb/home):
+
+Created 2 tables:
+
+Table Name         Partition Key  
+'beta_results'     'filename (S)'
+'prod_results'     'filename (S)'
+
+
+Enabled Rekognition
+
+Rekognition is enabled by default. Made sure my IAM user had these permissions:
+
 ```json
-{
-  "filename": "rekognition-input/sample.jpg",
-  "labels": [
-    {"Name": "Cat", "Confidence": 95.23},
-    {"Name": "Animal", "Confidence": 93.76}
-  ],
-  "timestamp": "2025-06-01T14:55:32Z",
-  "branch": "main"
-}
+"rekognition:*",
+"s3:*",
+"dynamodb:*"
+
