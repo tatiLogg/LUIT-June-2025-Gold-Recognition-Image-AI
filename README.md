@@ -55,46 +55,4 @@ Sample Output (JSON)
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-LUIT-June-2025-Gold-Recognition-Image-AI
-
-An automated image labeling pipeline using **Amazon Rekognition, S3, and DynamoDB, fully orchestrated through GitHub Actions. This solution was developed for Pixel Learning Co. to improve content indexing, automate moderation, and streamline image metadata management.
-
-Project Overview
-
-This project automates:
-- Image Uploads to S3
-- Label Detection with Rekognition
-- Result Logging to DynamoDB
-- Environment-Aware CI/CD via GitHub Actions
-
-
-Technologies Used
-- AWS Rekognition
-- Amazon S3
-- DynamoDB
-- Python (boto3)
-- GitHub Actions
-
-
-Folder Structure
-├── .github/workflows/
-│ ├── on_pull_request.yml # Triggers analysis on PR
-│ └── on_merge.yml # Triggers analysis on merge
-├── images/ # Image files to be analyzed
-│ └── sample.jpg
-├── analyze_image.py # Python analysis script
-└── README.md
-
 # LUIT-June-2025-Gold-Recognition-Image-AI
