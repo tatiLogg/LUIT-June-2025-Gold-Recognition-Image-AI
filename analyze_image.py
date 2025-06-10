@@ -11,7 +11,7 @@ def get_env(var_name: str) -> str:
 
 # ---------- Configuration ----------
 AWS_REGION = get_env("AWS_REGION")
-S3_BUCKET = get_env("S3_BUCKET_NAME")
+S3_BUCKET = get_env("S3_BUCKET")
 DYNAMO_TABLE = get_env("DYNAMO_TABLE")
 
 # ---------- AWS Clients ----------
