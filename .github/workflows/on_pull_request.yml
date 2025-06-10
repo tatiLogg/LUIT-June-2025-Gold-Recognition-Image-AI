@@ -13,6 +13,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       DYNAMO_TABLE: ${{ secrets.DYNAMODB_TABLE_BETA }}
+      S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
 
     steps:
       - name: Checkout repository
@@ -28,3 +29,4 @@ jobs:
 
       - name: Run Rekognition Analysis Script
         run: python analyze_image.py
+
