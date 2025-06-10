@@ -2,23 +2,18 @@ import os
 import boto3
 from datetime import datetime
 
-# ---------- Helper ----------
-def get_env(var_name: str) -> str:
-    value = os.getenv(var_name)
-    if not value:
-        raise RuntimeError(f"Missing required environment variable: {var_name}")
-    return value
-
 # ---------- Configuration ----------
-AWS_REGION = get_env("AWS_REGION")
-S3_BUCKET = get_env("S3_BUCKET_NAME")
-DYNAMO_TABLE = get_env("DYNAMO_TABLE")
+AWS_REGION = os.getenv("AWS_REGION")
+DYNAMO_TABLE = os.getenv("DYNAMO_TABLE")
+S3_BUCKET = "my-rekognition-pixel"  #  Hardcoded correct bucket
 
-# ---------- AWS Clients ----------
+if not AWS_REGION or not DYNAMO_TABLE:
+    raise RuntimeError("Missing required AWS_REGION or DYNAMO_TABLE.")
+
+# ---------- AWS Clients (using only .client) ----------
 s3 = boto3.client("s3", region_name=AWS_REGION)
 rekognition = boto3.client("rekognition", region_name=AWS_REGION)
-dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
-table = dynamodb.Table(DYNAMO_TABLE)
+dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
 
 # ---------- Constants ----------
 INPUT_PREFIX = "rekognition-input/"
@@ -37,7 +32,7 @@ def analyze_images():
         s3.upload_file(local_path, S3_BUCKET, s3_key)
         print(f"Uploaded {filename} to s3://{S3_BUCKET}/{s3_key}")
 
-        # Rekognition call
+        # Rekognition
         response = rekognition.detect_labels(
             Image={"S3Object": {"Bucket": S3_BUCKET, "Name": s3_key}},
             MaxLabels=10,
@@ -51,13 +46,15 @@ def analyze_images():
             print(f"- {label['Name']} ({label['Confidence']}%)")
 
         # Write to DynamoDB
-        item = {
-            "filename": s3_key,
-            "labels": labels,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "branch": os.getenv("GITHUB_HEAD_REF", "main")  # optional fallback
-        }
-        table.put_item(Item=item)
+        dynamodb.put_item(
+            TableName=DYNAMO_TABLE,
+            Item={
+                "filename": {"S": s3_key},
+                "labels": {"S": str(labels)},
+                "timestamp": {"S": datetime.utcnow().isoformat() + "Z"},
+                "branch": {"S": os.getenv("GITHUB_HEAD_REF", "main")}
+            }
+        )
         print(f"Saved results to DynamoDB table: {DYNAMO_TABLE}\n")
 
 if __name__ == "__main__":
