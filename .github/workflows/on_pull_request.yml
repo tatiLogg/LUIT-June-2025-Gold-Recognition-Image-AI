@@ -10,7 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
-      DYNAMO_TABLE: beta_results
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      DYNAMO_TABLE: ${{ secrets.DYNAMODB_TABLE_BETA }}
 
     steps:
       - name: Checkout repository
@@ -25,7 +27,4 @@ jobs:
         run: pip install boto3
 
       - name: Run Rekognition Analysis Script
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: python analyze_image.py
