@@ -1,61 +1,64 @@
-import boto3
 import os
-import json
-from decimal import Decimal
-from datetime import datetime, timezone
+import boto3
+from datetime import datetime
 
-# Load environment variables
-TABLE_NAME = os.getenv("DYNAMO_TABLE_NAME")
-BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
-REGION = os.getenv("AWS_REGION", "us-east-1")
-BRANCH = os.getenv("GITHUB_HEAD_REF", "local-test")  # fallback to local-test
+# ---------- Helper ----------
+def get_env(var_name: str) -> str:
+    value = os.getenv(var_name)
+    if not value:
+        raise RuntimeError(f"Missing required environment variable: {var_name}")
+    return value
 
-# Validate required env vars
-if not TABLE_NAME or not BUCKET_NAME:
-    raise EnvironmentError("Missing DYNAMO_TABLE_NAME or S3_BUCKET_NAME environment variable.")
+# ---------- Configuration ----------
+AWS_REGION = get_env("AWS_REGION")
+S3_BUCKET = get_env("S3_BUCKET_NAME")
+DYNAMO_TABLE = get_env("DYNAMO_TABLE")
 
-# AWS clients
-rekognition = boto3.client('rekognition', region_name=REGION)
-dynamodb = boto3.resource('dynamodb', region_name=REGION)
-table = dynamodb.Table(TABLE_NAME)
-s3 = boto3.client('s3', region_name=REGION)
+# ---------- AWS Clients ----------
+s3 = boto3.client("s3", region_name=AWS_REGION)
+rekognition = boto3.client("rekognition", region_name=AWS_REGION)
+dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
+table = dynamodb.Table(DYNAMO_TABLE)
 
-# Image details
-image_filename = 'sample.jpg'  # You can make this dynamic if needed
-local_path = f'images/{image_filename}'
-s3_key = f"rekognition-input/{image_filename}"
+# ---------- Constants ----------
+INPUT_PREFIX = "rekognition-input/"
+IMAGES_FOLDER = "images"
 
-# Upload to S3
-print(f"Uploading {local_path} to S3 bucket {BUCKET_NAME}...")
-s3.upload_file(local_path, BUCKET_NAME, s3_key)
-print(f"✅ Uploaded to S3: s3://{BUCKET_NAME}/{s3_key}")
+# ---------- Main Logic ----------
+def analyze_images():
+    for filename in os.listdir(IMAGES_FOLDER):
+        if not (filename.endswith(".jpg") or filename.endswith(".png")):
+            continue
 
-# Call Rekognition
-print("Calling Amazon Rekognition...")
-response = rekognition.detect_labels(
-    Image={'S3Object': {'Bucket': BUCKET_NAME, 'Name': s3_key}},
-    MaxLabels=10,
-    MinConfidence=80
-)
+        local_path = os.path.join(IMAGES_FOLDER, filename)
+        s3_key = INPUT_PREFIX + filename
 
-# Prepare item for DynamoDB
-print("Preparing item for DynamoDB...")
-item = {
-    "filename": s3_key,  # Must match the primary key of the DynamoDB table
-    "labels": [
-        {
-            "Name": label["Name"],
-            "Confidence": Decimal(str(label["Confidence"]))  # Convert float to Decimal
+        # Upload to S3
+        s3.upload_file(local_path, S3_BUCKET, s3_key)
+        print(f"Uploaded {filename} to s3://{S3_BUCKET}/{s3_key}")
+
+        # Rekognition call
+        response = rekognition.detect_labels(
+            Image={"S3Object": {"Bucket": S3_BUCKET, "Name": s3_key}},
+            MaxLabels=10,
+            MinConfidence=80
+        )
+
+        labels = [{"Name": label["Name"], "Confidence": round(label["Confidence"], 2)}
+                  for label in response["Labels"]]
+        print(f"Detected Labels for {filename}:")
+        for label in labels:
+            print(f"- {label['Name']} ({label['Confidence']}%)")
+
+        # Write to DynamoDB
+        item = {
+            "filename": s3_key,
+            "labels": labels,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "branch": os.getenv("GITHUB_HEAD_REF", "main")  # optional fallback
         }
-        for label in response["Labels"]
-    ],
-    "timestamp": datetime.now(timezone.utc).isoformat(),
-    "branch": BRANCH
-}
+        table.put_item(Item=item)
+        print(f"Saved results to DynamoDB table: {DYNAMO_TABLE}\n")
 
-print("Item to write:", json.dumps(item, indent=2, default=str))
-
-# Write to DynamoDB
-print(f"Writing item to DynamoDB table: {TABLE_NAME}...")
-table.put_item(Item=item)
-print("✅ Successfully wrote label results to DynamoDB.")
+if __name__ == "__main__":
+    analyze_images()
